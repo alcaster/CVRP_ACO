@@ -63,14 +63,11 @@ def ant_solution(vertices, edges, capacityLimit, demand, feromones):
 
 def rate_solution(solution, edges) -> float:
     s = 0
-    for i in solution:
-        a = 1
-        for j in i:
-            b = j
-            s = s + edges[ordered_tuple(a, b)]
-            a = b
-        b = 1
-        s = s + edges[ordered_tuple(a, b)]
+    for vertex in solution:
+        s += edges[1, vertex[0]]
+        for a, b in zip(vertex, vertex[1:]):
+            s += edges[ordered_tuple(a, b)]
+        s += edges[1, vertex[-1]]
     return s
 
 
