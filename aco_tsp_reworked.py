@@ -1,13 +1,25 @@
+from time import sleep
+
 import numpy as np
 from RegExService import getData
+from functools import reduce
 
 RANDOM_SEED = 7
-ANT_CAPACITY = 6000
+
+FILE_NAME = "E-n22-k4.txt"
 NUM_ANTS = 22
-NUM_ITERATIONS = 10000
+ANT_CAPACITY = 6000
+NUM_ITERATIONS = 1000
 DEPOT_ID = 1
 
-ALPHA = 4  # pheromone importance
+SOLUTIONS = {
+    "E-n22-k4.txt": ([[18, 21, 19, 16, 13], [17, 20, 22, 15], [14, 12, 5, 4, 9, 11], [10, 8, 6, 3, 2, 7]], 375),
+    "E-n33-k4.txt":
+        ([[1, 15, 26, 27, 16, 28, 29], [30, 14, 31], [3, 5, 6, 10, 18, 19, 22, 21, 20, 23, 24, 25, 17, 13],
+          [2, 12, 11, 32, 8, 9, 7, 4]], 835)
+}
+
+ALPHA = 2  # pheromone importance
 BETA = 5  # inverse distance heuristic importance
 RHO = 0.2  # pheromone evaporation coefficient
 Q = 80
@@ -40,7 +52,7 @@ class Graph:
     def init_adjacency_map(self, graph_data: dict):
         self.adjacency_map = {}
 
-        nodes = list(graph_data.keys())
+        nodes = list(sorted(graph_data.keys()))
         for index_1, node_1 in enumerate(nodes):
             for node_2 in nodes[index_1 + 1:]:
                 distance = self.get_euclidian_distance(graph_data[node_1], graph_data[node_2])
@@ -51,7 +63,7 @@ class Graph:
 
     def init_pheromone_map(self, nodes: list):
         self.pheromone_map = {}
-        nodes = list(nodes)
+        nodes = list(sorted(nodes))
         for index_1, node_1 in enumerate(nodes):
             for node_2 in nodes[index_1 + 1:]:
                 # pheromone_init = np.random.uniform(1, 10)
@@ -62,16 +74,18 @@ class Graph:
                 self.pheromone_map[node_2][node_1] = pheromone_init
 
     def update_pheromone_map(self, solutions: list):
+        # avg_cost = reduce(lambda x, y: x + y, (solution.cost for solution in solutions)) / len(solutions)
+
         # apply evaporation to all pheromones
-        nodes = list(self.pheromone_map.keys())
+        nodes = list(sorted(self.pheromone_map.keys()))
         for index_1, node_1 in enumerate(nodes):
             for node_2 in nodes[index_1 + 1:]:
-                new_value = (1 - RHO) * self.pheromone_map[node_1][node_2]
+                new_value = round((1 - RHO) * self.pheromone_map[node_1][node_2], 2)  # * Q / avg_cost
                 self.pheromone_map[node_1][node_2] = new_value
                 self.pheromone_map[node_2][node_1] = new_value
 
         for solution in solutions:
-            pheromone_increase = Q / solution.cost
+            pheromone_increase = 1 / solution.cost
             for route in solution.routes:
                 edges = [(route[index], route[index + 1]) for index in range(0, len(route) - 1)]
                 for edge in edges:
@@ -90,8 +104,10 @@ class Ant:
 
     def get_available_cities(self, current_city):
         allowed_by_capacity = [city for city in self.cities_left if self.capacity >= self.graph.demand_map[city]]
-        if current_city != DEPOT_ID:
-            allowed_by_capacity.append(DEPOT_ID)
+
+        # if current_city != DEPOT_ID:
+        #     allowed_by_capacity.append(DEPOT_ID)
+
         return allowed_by_capacity
 
     def select_first_city(self):
@@ -104,16 +120,13 @@ class Ant:
         if not available_cities:
             return None
 
-        normalizer = sum([pow(self.graph.pheromone_map[current_city][city], ALPHA) *
-                          pow(self.graph.adjacency_map[current_city][city], -BETA)
-                          for city in available_cities])
+        scores = [pow(self.graph.pheromone_map[current_city][city], ALPHA) *
+                  pow(1 / self.graph.adjacency_map[current_city][city], BETA)
+                  for city in available_cities]
+        denominator = sum(scores)
+        probabilities = [score / denominator for score in scores]
 
-        next_city_distribution = [pow(self.graph.pheromone_map[current_city][city], ALPHA) *
-                                  pow(self.graph.adjacency_map[current_city][city], -BETA) / normalizer
-                                  for city in available_cities]
-
-
-        next_city = np.random.choice(available_cities, p=next_city_distribution)
+        next_city = np.random.choice(available_cities, p=probabilities)
 
         return next_city
 
@@ -138,9 +151,16 @@ class Ant:
         while self.cities_left:
             current_city = self.routes[-1][-1]
             next_city = self.select_next_city(current_city)
-            self.move_to_city(current_city, next_city)
-            if next_city == DEPOT_ID:
+            if next_city is None:
+                self.move_to_city(current_city, DEPOT_ID)
                 self.start_new_route()
+            else:
+                self.move_to_city(current_city, next_city)
+
+            # self.move_to_city(current_city, next_city)
+            #
+            # if next_city == DEPOT_ID:
+            #     self.start_new_route()
 
         # always end at depot
         self.move_to_city(self.routes[-1][-1], DEPOT_ID)
@@ -155,11 +175,6 @@ class Ant:
         self.routes = []
         self.total_path_cost = 0
 
-    # def generate_routes(self):
-    #     indices = [index for index, el in enumerate(self.route) if el == 1]
-    #     routes = [(self.route[indices[i]: indices[i + 1] + 1]) for i in range(0, len(indices) - 1)]
-    #     return routes
-
 
 class Solution:
     def __init__(self, routes, cost):
@@ -167,8 +182,73 @@ class Solution:
         self.cost = cost
 
 
+def get_route_cost(route, graph: Graph):
+    total_cost = 0
+
+    for i in range(0, len(route) - 1):
+        total_cost += round(graph.adjacency_map[route[i]][route[i + 1]], 5)
+    return total_cost
+
+
+def get_route_cost_opt(route, graph: Graph):
+    # assumes route middle without starting and ending depot
+    # add depot transport cost
+    depot_costs = round(graph.adjacency_map[DEPOT_ID][route[0]], 5) + round(graph.adjacency_map[route[-1]][DEPOT_ID], 5)
+
+    return depot_costs + get_route_cost(route, graph)
+
+
+def two_opt_swap(route, i, k):
+    new_route = []
+    new_route.extend(route[:i])
+    new_route.extend(reversed(route[i:k + 1]))
+    new_route.extend(route[k + 1:])
+    return new_route
+
+
+def get_better_two_opt_swap(route, graph):
+    num_eligible_nodes_to_swap = len(route)
+    route_cost = get_route_cost_opt(route, graph)
+    for i in range(0, num_eligible_nodes_to_swap - 1):
+        for k in range(i + 1, num_eligible_nodes_to_swap):
+            new_route = two_opt_swap(route, i, k)
+            new_cost = get_route_cost_opt(new_route, graph)
+            if new_cost < route_cost:
+                return new_route
+    return None
+
+
+def get_optimal_route_intraswap(route, graph):
+    best_route = route
+
+    while True:
+        improved_route = get_better_two_opt_swap(best_route, graph)
+        if improved_route is None:
+            break
+        else:
+            best_route = improved_route
+
+    return best_route
+
+
+def apply_two_opt(initial_solution, graph):
+    best_routes = []
+
+    for route in initial_solution.routes:
+        # don't swap mandatory depots
+        best_routes.append(get_optimal_route_intraswap(route[1:-1], graph))
+
+    # apply back depot positions
+    for route in best_routes:
+        route.insert(0, DEPOT_ID)
+        route.append(DEPOT_ID)
+
+    return Solution(best_routes,
+                    sum([get_route_cost(route, graph) for route in best_routes]))
+
+
 def run_aco():
-    capacity, graph_data, demand, optimal_value = getData("./E-n22-k4.txt")
+    capacity, graph_data, demand, optimal_value = getData("./" + FILE_NAME)
     graph = Graph(graph_data, demand)
     ants = [Ant(graph, capacity) for i in range(0, NUM_ANTS)]
 
@@ -181,10 +261,17 @@ def run_aco():
         for ant in ants:
             solutions.append(ant.find_solution())
 
-        candidate_best_solution = max(solutions, key=lambda solution: solution.cost)
-        print(candidate_best_solution.cost, candidate_best_solution.routes)
+        candidate_best_solution = min(solutions, key=lambda solution: solution.cost)
+        candidate_best_solution = apply_two_opt(candidate_best_solution, graph)
         if not best_solution or candidate_best_solution.cost < best_solution.cost:
             best_solution = candidate_best_solution
 
         print("Best solution in iteration {}/{} = {}".format(i, NUM_ITERATIONS, best_solution.cost))
         graph.update_pheromone_map(solutions)
+
+    print("---")
+    print("Final best solution:")
+    print(best_solution.cost)
+    print(best_solution.routes)
+    print("Optimal solution: ")
+    print(SOLUTIONS[FILE_NAME])
