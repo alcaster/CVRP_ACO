@@ -56,6 +56,7 @@ def ant_solution(vertices, edges, capacityLimit, demand, feromones):
                 path.append(city)
                 vertices.remove(city)
             else:
+                sys.stdout.write("")
                 break
         solution.append(path)
     return solution
@@ -75,7 +76,7 @@ def update_feromone(feromones, solutions, bestSolution):
     Lavg = reduce(lambda x, y: x + y, (i[1] for i in solutions)) / len(solutions)
     feromones = {k: (ro + th / Lavg) * v for (k, v) in feromones.items()}
     solutions.sort(key=lambda x: x[1])
-    if bestSolution != None:
+    if bestSolution is not None:
         if solutions[0][1] < bestSolution[1]:
             bestSolution = solutions[0]
         for path in bestSolution[0]:
@@ -91,7 +92,7 @@ def update_feromone(feromones, solutions, bestSolution):
             for i in range(len(path) - 1):
                 feromones[ordered_tuple(path[i], path[i + 1])] = (sigm - (l + 1) / L ** (l + 1)) + \
                                                                  feromones[ordered_tuple(path[i], path[i + 1])]
-    return bestSolution
+    return feromones, bestSolution
 
 
 def main():
@@ -103,7 +104,7 @@ def main():
         for _ in range(ants):
             solution = ant_solution(vertices.copy(), edges, capacityLimit, demand, feromones)
             solutions.append((solution, rate_solution(solution, edges)))
-        bestSolution = update_feromone(feromones, solutions, bestSolution)
+        feromones, bestSolution = update_feromone(feromones, solutions, bestSolution)
         print(str(i) + ":\t" + str(int(bestSolution[1])) + "\t" + str(optimalValue))
     return bestSolution
 
