@@ -6,7 +6,7 @@ from functools import reduce
 
 RANDOM_SEED = 7
 
-FILE_NAME = "E-n22-k4.txt"
+FILE_NAME = "E-n33-k4.txt"
 NUM_ANTS = 22
 ANT_CAPACITY = 6000
 NUM_ITERATIONS = 1000
@@ -23,6 +23,10 @@ ALPHA = 2  # pheromone importance
 BETA = 5  # inverse distance heuristic importance
 RHO = 0.2  # pheromone evaporation coefficient
 Q = 80
+
+USE_2_OPT_STRATEGY = True
+USE_CANDIDATE_LIST_STRATEGY = False
+CANDIDATE_LIST_SIZE = NUM_ANTS // 3
 
 np.random.seed(RANDOM_SEED)
 
@@ -46,6 +50,8 @@ class Graph:
         # {city_id : {city_id: value} }
         self.init_adjacency_map(graph_data)
         self.init_pheromone_map(graph_data.keys())
+        if USE_CANDIDATE_LIST_STRATEGY:
+            self.init_candidate_list()
 
         self.demand_map = demand
 
@@ -95,6 +101,13 @@ class Graph:
     def get_euclidian_distance(self, p1, p2):
         return np.sqrt(pow(p2[0] - p1[0], 2) + pow(p2[1] - p1[1], 2))
 
+    def init_candidate_list(self):
+        self.candidate_list = {}
+
+        for node, distances in self.pheromone_map.items():
+            neighbours = [adjacency[0] for adjacency in sorted(distances.items(), key=lambda item: item[1])]
+            self.candidate_list[node] = neighbours[:CANDIDATE_LIST_SIZE]
+
 
 class Ant:
     def __init__(self, graph: Graph, capacity):
@@ -102,23 +115,25 @@ class Ant:
         self.starting_ant_capacity = capacity
         self.reset_state()
 
-    def get_available_cities(self, current_city):
+    def get_available_cities(self):
         allowed_by_capacity = [city for city in self.cities_left if self.capacity >= self.graph.demand_map[city]]
-
-        # if current_city != DEPOT_ID:
-        #     allowed_by_capacity.append(DEPOT_ID)
-
         return allowed_by_capacity
 
     def select_first_city(self):
-        available_cities = self.get_available_cities(DEPOT_ID)
+        available_cities = self.get_available_cities()
         return np.random.choice(available_cities)
 
     def select_next_city(self, current_city):
-        available_cities = self.get_available_cities(current_city)
+        available_cities = self.get_available_cities()
 
         if not available_cities:
             return None
+
+        if USE_CANDIDATE_LIST_STRATEGY:
+            available_nearest_neighbours = [city for city in available_cities if
+                                            city in self.graph.candidate_list[current_city]]
+            if available_nearest_neighbours:
+                available_cities = available_nearest_neighbours
 
         scores = [pow(self.graph.pheromone_map[current_city][city], ALPHA) *
                   pow(1 / self.graph.adjacency_map[current_city][city], BETA)
@@ -156,11 +171,6 @@ class Ant:
                 self.start_new_route()
             else:
                 self.move_to_city(current_city, next_city)
-
-            # self.move_to_city(current_city, next_city)
-            #
-            # if next_city == DEPOT_ID:
-            #     self.start_new_route()
 
         # always end at depot
         self.move_to_city(self.routes[-1][-1], DEPOT_ID)
@@ -262,7 +272,8 @@ def run_aco():
             solutions.append(ant.find_solution())
 
         candidate_best_solution = min(solutions, key=lambda solution: solution.cost)
-        candidate_best_solution = apply_two_opt(candidate_best_solution, graph)
+        if USE_2_OPT_STRATEGY:
+            candidate_best_solution = apply_two_opt(candidate_best_solution, graph)
         if not best_solution or candidate_best_solution.cost < best_solution.cost:
             best_solution = candidate_best_solution
 
