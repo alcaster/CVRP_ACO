@@ -182,11 +182,11 @@ class Ant:
         self.routes = []
         self.total_path_cost = 0
 
-
+@dataclass
 class Solution:
-    def __init__(self, routes, cost):
-        self.routes = routes
-        self.cost = cost
+    routes : List[int]
+    cost : float
+
 
 
 def get_route_cost(route, graph: Graph):
