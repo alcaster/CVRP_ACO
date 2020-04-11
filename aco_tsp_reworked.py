@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -21,7 +21,7 @@ class Config:
     FILE_NAME = "E-n33-k4.txt"
     NUM_ANTS = 22
     ANT_CAPACITY = 6000
-    NUM_ITERATIONS = 1000
+    NUM_ITERATIONS = 100
     DEPOT_ID = 1
 
     ALPHA = 2  # pheromone importance
@@ -205,20 +205,21 @@ def get_route_cost_opt(route, graph: Graph, DEPOT_ID):
     return depot_costs + get_route_cost(route, graph)
 
 
-def two_opt_swap(route, i, k):
-    new_route = []
-    new_route.extend(route[:i])
-    new_route.extend(reversed(route[i:k + 1]))
-    new_route.extend(route[k + 1:])
-    return new_route
+def two_opt(route, i, j) -> List[int]:
+    """
+    Perform two opt swap
+    >>> two_opt([1,2,3,4,5,6], 1, 3)
+    [1, 4, 3, 2, 5, 6]
+    """
+    return route[:i] + route[i:j + 1][::-1] + route[j + 1:]
 
 
-def get_better_two_opt_swap(route, graph, DEPOT_ID):
+def get_better_two_opt_swap(route, graph, DEPOT_ID) -> Optional[List[int]]:
     num_eligible_nodes_to_swap = len(route)
     route_cost = get_route_cost_opt(route, graph, DEPOT_ID)
     for i in range(0, num_eligible_nodes_to_swap - 1):
         for k in range(i + 1, num_eligible_nodes_to_swap):
-            new_route = two_opt_swap(route, i, k)
+            new_route = two_opt(route, i, k)
             new_cost = get_route_cost_opt(new_route, graph, DEPOT_ID)
             if new_cost < route_cost:
                 return new_route
@@ -230,25 +231,18 @@ def get_optimal_route_intraswap(route, graph, DEPOT_ID):
 
     while True:
         improved_route = get_better_two_opt_swap(best_route, graph, DEPOT_ID)
-        if improved_route is None:
-            break
-        else:
+        if improved_route:
             best_route = improved_route
-
+        else:
+            break
     return best_route
 
 
 def apply_two_opt(initial_solution, graph, DEPOT_ID):
-    best_routes = []
-
-    for route in initial_solution.routes:
-        # don't swap mandatory depots
-        best_routes.append(get_optimal_route_intraswap(route[1:-1], graph, DEPOT_ID))
-
-    # apply back depot positions
-    for route in best_routes:
-        route.insert(0, DEPOT_ID)
-        route.append(DEPOT_ID)
+    best_routes = [
+        [DEPOT_ID] + get_optimal_route_intraswap(route[1:-1], graph, DEPOT_ID) + [DEPOT_ID]
+        for route in initial_solution.routes
+    ]
 
     return Solution(best_routes,
                     sum([get_route_cost(route, graph) for route in best_routes]))
