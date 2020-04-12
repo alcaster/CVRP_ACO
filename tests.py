@@ -7,7 +7,7 @@ import numpy as np
 
 from aco_tsp_reworked import Config, run_aco, Solution
 
-N_AVERAGE = 2
+N_AVERAGE = 5
 
 
 def main():
@@ -18,8 +18,8 @@ def main():
     candidate_list_config.USE_2_OPT_STRATEGY = False
 
     baseline_config.USE_CANDIDATE_LIST_STRATEGY = False
-    two_opt_config.USE_2_OPT_STRATEGY = False
-    candidate_list_config.USE_2_OPT_STRATEGY = True
+    two_opt_config.USE_CANDIDATE_LIST_STRATEGY = False
+    candidate_list_config.USE_CANDIDATE_LIST_STRATEGY = True
 
     configs: Dict[str, Config] = {
         "baseline": baseline_config,
@@ -27,7 +27,7 @@ def main():
         "candidate_list": candidate_list_config,
     }
 
-    n_ants = [20, 40, 100]
+    n_ants = [10, 20, 33]
     alphas = [1, 2, 4, 5]
     rhos = [0.05, 0.1, 0.25, 0.3]
 
@@ -51,16 +51,18 @@ def main():
 
                     curr_results = []
                     for _ in range(N_AVERAGE):
-                        result = run_aco(config, False)
-                        curr_results.append(result)
+                        try:
+                            result = run_aco(config, False)
+                            curr_results.append(result)
+                        except Exception as e:
+                            print(e)
                     best, history = average_n_results(curr_results)
 
+                    results[name, ants, alpha, rho] = (best, history)
                     with open(log_dir / "log.txt", 'a') as f:
                         f.write(f"{experiment_name} = {best}\n")
-                    results[name, ants, alpha, rho] = (best, history)
-
-    with open(log_dir / "save.pkl", 'wb') as f:
-        pickle.dump(results, f)
+                    with open(log_dir / "save.pkl", 'wb') as f:
+                        pickle.dump(results, f)
 
 
 def average_n_results(results: List[Tuple[Solution, List[Solution]]]) -> Tuple[np.ndarray, List[np.ndarray]]:
@@ -69,6 +71,8 @@ def average_n_results(results: List[Tuple[Solution, List[Solution]]]) -> Tuple[n
     :param results:
     :return: Tuple best score and history of scores
     """
+    if not results:
+        return np.inf, []
     best = []
     history = [[]] * len(results[0][1])
     for i in results:
