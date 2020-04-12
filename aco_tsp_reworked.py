@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -21,7 +21,7 @@ class Config:
     FILE_NAME = "E-n33-k4.txt"
     NUM_ANTS = 22
     ANT_CAPACITY = 6000
-    NUM_ITERATIONS = 100
+    NUM_ITERATIONS = 1000
     DEPOT_ID = 1
 
     ALPHA = 2  # pheromone importance
@@ -80,7 +80,8 @@ class Graph:
         nodes = list(sorted(self.pheromone_map.keys()))
         for index_1, node_1 in enumerate(nodes):
             for node_2 in nodes[index_1 + 1:]:
-                new_value = round((1 - self.cfg.RHO) * self.pheromone_map[node_1][node_2], 2)  # * Q / avg_cost
+                new_value = max(round((1 - self.cfg.RHO) * self.pheromone_map[node_1][node_2], 2),
+                                1e-10)  # * Q / avg_cost
                 self.pheromone_map[node_1][node_2] = new_value
                 self.pheromone_map[node_2][node_1] = new_value
 
@@ -182,11 +183,11 @@ class Ant:
         self.routes = []
         self.total_path_cost = 0
 
+
 @dataclass
 class Solution:
-    routes : List[int]
-    cost : float
-
+    routes: List[int]
+    cost: float
 
 
 def get_route_cost(route, graph: Graph):
@@ -248,13 +249,19 @@ def apply_two_opt(initial_solution, graph, DEPOT_ID):
                     sum([get_route_cost(route, graph) for route in best_routes]))
 
 
-def run_aco(cfg: Config, verbose: bool = True) -> Solution:
+def run_aco(cfg: Config, verbose: bool = True) -> Tuple[Solution, List[Solution]]:
+    """
+    :param cfg: Config
+    :param verbose: Should it print output
+    :return: Best solution and list of all solution in every iteration
+    """
     capacity, graph_data, demand, optimal_value = getData("./" + cfg.FILE_NAME)
     graph = Graph(graph_data, demand, cfg)
     ants = [Ant(graph, capacity, cfg) for i in range(0, cfg.NUM_ANTS)]
 
     best_solution = None
 
+    candidates = []
     for i in range(1, cfg.NUM_ITERATIONS + 1):
         for ant in ants:
             ant.reset_state()
@@ -265,6 +272,8 @@ def run_aco(cfg: Config, verbose: bool = True) -> Solution:
         candidate_best_solution = min(solutions, key=lambda solution: solution.cost)
         if cfg.USE_2_OPT_STRATEGY:
             candidate_best_solution = apply_two_opt(candidate_best_solution, graph, cfg.DEPOT_ID)
+
+        candidates.append(candidate_best_solution)
         if not best_solution or candidate_best_solution.cost < best_solution.cost:
             best_solution = candidate_best_solution
 
@@ -278,7 +287,7 @@ def run_aco(cfg: Config, verbose: bool = True) -> Solution:
         print(best_solution.routes)
         print("Optimal solution: ")
         print(SOLUTIONS[cfg.FILE_NAME])
-    return best_solution
+    return best_solution, candidates
 
 
 if __name__ == '__main__':
