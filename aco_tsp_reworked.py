@@ -27,9 +27,8 @@ class Config:
     ALPHA = 2  # pheromone importance
     BETA = 5  # inverse distance heuristic importance
     RHO = 0.2  # pheromone evaporation coefficient
-    Q = 80
 
-    USE_2_OPT_STRATEGY = True
+    USE_2_OPT_STRATEGY = False
     USE_CANDIDATE_LIST_STRATEGY = False
     CANDIDATE_LIST_SIZE = NUM_ANTS // 3
 
@@ -209,7 +208,7 @@ def get_route_cost_opt(route, graph: Graph, DEPOT_ID):
 def two_opt(route, i, j) -> List[int]:
     """
     Perform two opt swap
-    >>> two_opt([1,2,3,4,5,6], 1, 3)
+    >>> two_opt([1, 2, 3, 4, 5, 6], 1, 3)
     [1, 4, 3, 2, 5, 6]
     """
     return route[:i] + route[i:j + 1][::-1] + route[j + 1:]
@@ -223,7 +222,7 @@ def get_better_two_opt_swap(route, graph, DEPOT_ID) -> Optional[List[int]]:
             new_route = two_opt(route, i, k)
             new_cost = get_route_cost_opt(new_route, graph, DEPOT_ID)
             if new_cost < route_cost:
-                return new_route
+                return new_route  # should we return first better ?
     return None
 
 

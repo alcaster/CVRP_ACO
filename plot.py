@@ -1,11 +1,11 @@
 import pickle
 from pathlib import Path
+import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import rc
 
 plt.style.use('seaborn-whitegrid')
 
-FILENAME = Path(__file__).resolve().parent / "results_13042020" / "save.pkl"
+FILENAME = Path(__file__).resolve().parent / "results_1586779168" / "save.pkl"
 
 ## Config, copied form results_*/tests.py
 n_ants = [10, 20, 33]
@@ -23,15 +23,25 @@ def main():
     data = {
         name: [i for i in d[(name,) + mutual_params][1]] for name in names
     }
-    fig, ax = plt.subplots(figsize=(5, 3))
+    fig, ax = plt.subplots()
+    datalen = len(list(data.values())[0])
     for name in names:
-        print(data[name])
-        ax.plot(range(1000), data[name], label=name)
+        ax.plot(range(datalen), data[name], label=name)
 
-    ax.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left',
-              ncol=2, mode="expand", borderaxespad=0.)
-    ax.set_title("Comparision of different methods.\n N_ANTS = 20, Alpha = 2, R = 0.25")
+    ax.xaxis.set_ticks(np.arange(0, datalen + 1, 100))
+    starty, endy = ax.get_ylim()
+    stepy = 20
+    ax.yaxis.set_ticks(np.arange(starty - starty%stepy + stepy, endy - stepy, stepy))
+
+    ax.text(0.5, 1.21, "Comparision of tested methods", horizontalalignment='center', fontsize=20,
+            transform=ax.transAxes)
+
+    ax.text(0.5, 1.12, "N_ANTS = 20, Alpha = 2, R = 0.25", horizontalalignment='center', fontsize=12,
+            transform=ax.transAxes)
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.1),
+              ncol=3, fancybox=True, shadow=True)
     fig.tight_layout()
+    plt.savefig('compare3.svg', dpi=400, bbox_inches='tight')
     plt.show()
 
 
