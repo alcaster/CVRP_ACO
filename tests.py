@@ -7,7 +7,7 @@ import numpy as np
 
 from aco_tsp_reworked import Config, run_aco, Solution
 
-N_AVERAGE = 5
+N_AVERAGE = 1
 
 
 def main():
@@ -35,7 +35,7 @@ def main():
     log_dir = Path(__file__).resolve().parent / f"results_{timestamp}"
     log_dir.mkdir()
 
-    results: Dict[Tuple, Tuple[np.ndarray, List[np.ndarray]]] = {}
+    results: Dict[Tuple, Tuple[np.ndarray, np.ndarray]] = {}
     for name, config in configs.items():
         print(f"Testing config: {name}")
         for ants in n_ants:
@@ -65,21 +65,21 @@ def main():
                         pickle.dump(results, f)
 
 
-def average_n_results(results: List[Tuple[Solution, List[Solution]]]) -> Tuple[np.ndarray, List[np.ndarray]]:
+def average_n_results(results: List[Tuple[Solution, List[Solution]]]) -> Tuple[np.ndarray, np.ndarray]:
     """
     Average n results. Drop paths.
     :param results:
     :return: Tuple best score and history of scores
     """
     if not results:
-        return np.inf, []
+        return np.inf, np.array([])
     best = []
-    history = [[]] * len(results[0][1])
+    history = [[] for _ in range(len(results[0][1]))]
     for i in results:
         best.append(i[0].cost)
         for idx, elem in enumerate(i[1]):
             history[idx].append(elem.cost)
-    return np.mean(best), [np.mean(i) for i in history]
+    return np.mean(best), np.mean(history, 1)
 
 
 if __name__ == '__main__':
