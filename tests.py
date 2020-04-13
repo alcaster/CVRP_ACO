@@ -4,14 +4,21 @@ from pathlib import Path
 from typing import Dict, Tuple, List
 
 import numpy as np
-
+import datetime
 from aco_tsp_reworked import Config, run_aco, Solution
 
-N_AVERAGE = 1
+N_AVERAGE = 5
 
 
 def main():
     baseline_config, two_opt_config, candidate_list_config = Config(), Config(), Config()
+    baseline_config.FILE_NAME = "E-n51-k5.txt"
+    two_opt_config.FILE_NAME = "E-n51-k5.txt"
+    candidate_list_config.FILE_NAME = "E-n51-k5.txt"
+
+    baseline_config.ANT_CAPACITY = 160
+    two_opt_config.ANT_CAPACITY = 160
+    candidate_list_config.ANT_CAPACITY = 160
 
     baseline_config.USE_2_OPT_STRATEGY = False
     two_opt_config.USE_2_OPT_STRATEGY = True
@@ -35,7 +42,7 @@ def main():
     log_dir = Path(__file__).resolve().parent / f"results_{timestamp}"
     log_dir.mkdir()
 
-    results: Dict[Tuple, Tuple[np.ndarray, np.ndarray]] = {}
+    results: Dict[Tuple, Tuple[np.ndarray, np.ndarray, datetime.timedelta]] = {}
     for name, config in configs.items():
         print(f"Testing config: {name}")
         for ants in n_ants:
@@ -49,6 +56,7 @@ def main():
                     print(experiment_name)
                     config.RHO = rho
 
+                    start = datetime.datetime.now()
                     curr_results = []
                     for _ in range(N_AVERAGE):
                         try:
@@ -57,8 +65,8 @@ def main():
                         except Exception as e:
                             print(e)
                     best, history = average_n_results(curr_results)
-
-                    results[name, ants, alpha, rho] = (best, history)
+                    time_difference = (start - datetime.datetime.now()) / N_AVERAGE
+                    results[name, ants, alpha, rho] = (best, history, time_difference)
                     with open(log_dir / "log.txt", 'a') as f:
                         f.write(f"{experiment_name} = {best}\n")
                     with open(log_dir / "save.pkl", 'wb') as f:
