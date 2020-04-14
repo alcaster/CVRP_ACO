@@ -1,0 +1,1 @@
+BASELINE: ants: 20, alpha: 2, rho: 0.25 = 648.8627448382558
