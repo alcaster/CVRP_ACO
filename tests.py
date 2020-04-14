@@ -65,7 +65,7 @@ def main():
                         except Exception as e:
                             print(e)
                     best, history = average_n_results(curr_results)
-                    time_difference = (start - datetime.datetime.now()) / N_AVERAGE
+                    time_difference = (datetime.datetime.now() - start) / N_AVERAGE
                     results[name, ants, alpha, rho] = (best, history, time_difference)
                     with open(log_dir / "log.txt", 'a') as f:
                         f.write(f"{experiment_name} = {best}\n")

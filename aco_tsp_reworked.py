@@ -99,7 +99,7 @@ class Graph:
     def create_candidate_list(self):
         candidate_list = {}
 
-        for node, distances in self.pheromone_map.items():
+        for node, distances in self.adjacency_map.items():
             neighbours = [adjacency[0] for adjacency in sorted(distances.items(), key=lambda item: item[1])]
             candidate_list[node] = neighbours[:self.cfg.CANDIDATE_LIST_SIZE]
         return candidate_list
