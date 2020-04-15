@@ -11,17 +11,27 @@ N_AVERAGE = 5
 
 
 def main():
-    baseline_config = Config()
-    baseline_config.FILE_NAME = "E-n76-k10.txt"
+    baseline_config, two_opt_config, candidate_list_config = Config(), Config(), Config()
+    baseline_config.FILE_NAME = "E-n51-k5.txt"
+    two_opt_config.FILE_NAME = "E-n51-k5.txt"
+    candidate_list_config.FILE_NAME = "E-n33-k4.txt"
 
-    baseline_config.ANT_CAPACITY = 140
+    baseline_config.ANT_CAPACITY = 160
+    two_opt_config.ANT_CAPACITY = 160
+    candidate_list_config.ANT_CAPACITY = 8000
 
-    baseline_config.USE_2_OPT_STRATEGY = True
+    baseline_config.USE_2_OPT_STRATEGY = False
+    two_opt_config.USE_2_OPT_STRATEGY = True
+    candidate_list_config.USE_2_OPT_STRATEGY = False
 
-    baseline_config.USE_CANDIDATE_LIST_STRATEGY = True
+    baseline_config.USE_CANDIDATE_LIST_STRATEGY = False
+    two_opt_config.USE_CANDIDATE_LIST_STRATEGY = False
+    candidate_list_config.USE_CANDIDATE_LIST_STRATEGY = True
 
     configs: Dict[str, Config] = {
-        "two_opt_candidate_list": baseline_config,
+        # "baseline": baseline_config,
+        # "two_opt": two_opt_config,
+        "candidate_list": candidate_list_config,
     }
 
     n_ants = [20]

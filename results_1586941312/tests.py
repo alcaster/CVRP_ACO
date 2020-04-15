@@ -12,9 +12,9 @@ N_AVERAGE = 5
 
 def main():
     baseline_config = Config()
-    baseline_config.FILE_NAME = "E-n76-k10.txt"
+    baseline_config.FILE_NAME = "E-n33-k4.txt"
 
-    baseline_config.ANT_CAPACITY = 140
+    baseline_config.ANT_CAPACITY = 8000
 
     baseline_config.USE_2_OPT_STRATEGY = True
 
